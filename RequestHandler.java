@@ -67,12 +67,27 @@ public class RequestHandler extends Thread{
       }
 
       resp.command = "JOIN_OK";
-      resp.body = "This is some placeholder body data...";
+
+      // send overlapping data to new node
+      for(String key : bucket.data.keySet()){
+        if(!keyInBetween(new BigInteger(key), bucket.prevId, bucket.bucketId)){
+          resp.body.put(key, bucket.data.get(key));
+          bucket.data.remove(key);
+        }
+      }
     }else{
-      resp = forwardJoinRequest(msg);
+      resp = forwardRequest(msg);
     }
 
     Message.writeMessage(out, resp);
+  }
+
+  protected boolean keyInBetween(BigInteger k, BigInteger a, BigInteger b){
+    if(k.compareTo(b) < 0){
+      return a.compareTo(b) < 0 ? k.compareTo(a) > 0 : true;
+    }else{
+      return a.compareTo(b) < 0 ? false : k.compareTo(a) > 0;
+    }
   }
 
   // response for new node joining root
@@ -115,7 +130,7 @@ public class RequestHandler extends Thread{
     bucket.prevPort = Integer.parseInt(headers.get("BucketPort"));
   }
 
-  private Message forwardJoinRequest(Message msg) throws Exception{
+  private Message forwardRequest(Message msg) throws Exception{
     Message resp = null;
 
     try(
@@ -159,7 +174,10 @@ public class RequestHandler extends Thread{
       bucket.prevPort = Integer.parseInt(msg.headers.get("PrevPort"));
     }
 
-    // todo: insert transferred data
+    // insert transferred data
+    for(String key : msg.body.keySet()){
+      bucket.data.put(key, msg.body.get(key));
+    }
   }
 
   private void handleNodeGoneRequest(Message msg) throws Exception{
@@ -181,6 +199,45 @@ public class RequestHandler extends Thread{
       bucket.nextIp = InetAddress.getByName(msg.headers.get("NextIp"));
       bucket.nextPort = Integer.parseInt(msg.headers.get("NextPort"));
     }
+  }
+
+  // DataId
+  // DataValue
+  private void handleStoreRequest(Message msg) throws Exception{
+    boolean keyHere = bucketOwnsKey(msg.body.get("DataId"));
+    Message resp;
+
+    if(keyHere){
+      bucket.data.put(msg.body.get("DataId"), msg.body.get("DataValue"));
+
+      resp = new Message();
+      resp.command = "STORE_OK";
+    }else{
+      resp = forwardRequest(msg);
+    }
+
+    Message.writeMessage(out, resp);
+  }
+
+  // DataId
+  private void handleRetrieveRequest(Message msg) throws Exception{
+    boolean keyHere = bucketOwnsKey(msg.body.get("DataId"));
+    Message resp;
+
+    if(keyHere){
+      String key = msg.body.get("DataId");
+      String value = bucket.data.containsKey(key) ? bucket.data.get(key) : "Data not found...";
+
+      resp = new Message();
+
+      resp.command = "RETRIEVE_OK";
+      resp.body.put("DataId", key);
+      resp.body.put("DataValue", value);
+    }else{
+      resp = forwardRequest(msg);
+    }
+
+    Message.writeMessage(out, resp);
   }
 
   private void handleRequest(BufferedReader in, BufferedWriter out) throws Exception{
@@ -227,7 +284,7 @@ public class RequestHandler extends Thread{
       - resp is recursively returned
       */
       case "STORE":
-        out.write("Request to store data...\n");
+        handleStoreRequest(msg);
         break;
 
       /*
@@ -236,7 +293,7 @@ public class RequestHandler extends Thread{
       - resp is recursively returned
       */
       case "RETRIEVE":
-        out.write("Request to retrieve data...\n");
+        handleRetrieveRequest(msg);
         break;
 
       default:

@@ -2,8 +2,7 @@
 todo:
 
 - thread safe interface to bucket object
-- insert any transferred data when joining
-- implement leave, send data for successor to take on
+- bug with re-joining
 */
 
 import java.math.BigInteger;
@@ -88,15 +87,19 @@ public class Bucket{
     BigInteger id = null;
 
     try{
-      MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
       String text = ip.getHostAddress() + ":" + port;
-      byte[] digest = sha256.digest(text.getBytes("UTF-8"));
-      id = new BigInteger(1, digest);
+      id = getSha256Hash(text);
     }catch(Exception e){
       exitWithError("Could not compute bucket id... " + e.getMessage());
     }
 
     return id;
+  }
+
+  private static BigInteger getSha256Hash(String text) throws Exception{
+    MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+    byte[] digest = sha256.digest(text.getBytes("UTF-8"));
+    return new BigInteger(1, digest);
   }
 
   public void start(){
@@ -120,7 +123,6 @@ public class Bucket{
       BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
       BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
     ){
-
       Message msg = buildJoinMessage();
       Message.writeMessage(out, msg);
 
@@ -152,7 +154,7 @@ public class Bucket{
     msg.headers.put("BucketIp", ip.getHostAddress());
     msg.headers.put("BucketPort", String.valueOf(port));
 
-    msg.body = "The body should be empty!";
+    msg.body = new HashMap<>();
     return msg;
   }
 
@@ -164,7 +166,7 @@ public class Bucket{
     msg.headers.put("BucketIp", ip.getHostAddress());
     msg.headers.put("BucketPort", String.valueOf(port));
 
-    msg.body = "The body should be empty!";
+    msg.body = new HashMap<>();
     return msg;
   }
 
@@ -177,7 +179,10 @@ public class Bucket{
     prevIp = InetAddress.getByName(resp.headers.get("PrevIp"));
     prevPort = Integer.parseInt(resp.headers.get("PrevPort"));
 
-    // todo: insert transferred data after joining
+    // insert transferred data after joining
+    for(String key: resp.body.keySet()){
+      data.put(key, resp.body.get(key));
+    }
   }
 
   private void startRequestListener(){
@@ -211,7 +216,7 @@ public class Bucket{
     msg.headers.put("NextIp", nextIp.getHostAddress());
     msg.headers.put("NextPort", String.valueOf(nextPort));
 
-    msg.body = "The body should be empty!";
+    msg.body = new HashMap<>();
     return msg;
   }
 
@@ -238,7 +243,104 @@ public class Bucket{
     msg.headers.put("PrevIp", prevIp.getHostAddress());
     msg.headers.put("PrevPort", String.valueOf(prevPort));
 
-    msg.body = "The body should contain any data to transfer!";
+    // transfer all data to successor
+    for(String key : data.keySet()){
+      msg.body.put(key, data.get(key));
+    }
+
+    return msg;
+  }
+
+  private void storeData(){
+    System.out.print("Object name: ");
+    String name = scanner.nextLine();
+
+    System.out.print("Object value: ");
+    String value = scanner.nextLine();
+
+    BigInteger key;
+    try{
+      key = getSha256Hash(name);
+    }catch(Exception e){
+      System.err.println("Could not compute object hash... " + e.getMessage());
+      return;
+    }
+
+    if(ownsKey(key)){
+      data.put(key.toString(), value);
+    }else{
+      sendStore(key.toString(), value);
+    }
+  }
+
+  private void sendStore(String key, String value){
+    try(
+      Socket next = new Socket(nextIp, nextPort);
+      BufferedReader in = new BufferedReader(new InputStreamReader(next.getInputStream()));
+      BufferedWriter out = new BufferedWriter(new OutputStreamWriter(next.getOutputStream()));
+    ){
+      Message msg = buildStoreMessage(key, value);
+      Message.writeMessage(out, msg);
+    }catch(Exception e){
+      System.out.println("Could not store data... " + e.getMessage());
+    }
+  }
+
+  private Message buildStoreMessage(String key, String value){
+    Message msg = new Message();
+    msg.command = "STORE";
+
+    msg.body.put("DataId", key);
+    msg.body.put("DataValue", value);
+
+    return msg;
+  }
+
+  private String retrieveData(){
+    System.out.print("Object name: ");
+    String name = scanner.nextLine();
+
+    BigInteger key;
+    try{
+      key = getSha256Hash(name);
+    }catch(Exception e){
+      System.err.println("Could not retrieve object... " + e.getMessage());
+      return "Error...";
+    }
+
+    if(ownsKey(key)){
+      return data.get(key.toString());
+    }else{
+      return sendRetrieve(key.toString());
+    }
+  }
+
+  private String sendRetrieve(String key){
+    try(
+      Socket next = new Socket(nextIp, nextPort);
+      BufferedReader in = new BufferedReader(new InputStreamReader(next.getInputStream()));
+      BufferedWriter out = new BufferedWriter(new OutputStreamWriter(next.getOutputStream()));
+    ){
+
+      Message msg = buildRetrieveMessage(key);
+      Message.writeMessage(out, msg);
+
+      Message resp = Message.readMessage(in);
+      return resp.body.get("DataValue");
+
+    }catch(Exception e){
+      System.out.println("Could not store data... " + e.getMessage());
+    }
+
+    return "Error";
+  }
+
+  private Message buildRetrieveMessage(String key){
+    Message msg = new Message();
+
+    msg.command = "RETRIEVE";
+    msg.body.put("DataId", key);
+
     return msg;
   }
 
@@ -259,6 +361,15 @@ public class Bucket{
 
         case "leave":
           leaveNetwork();
+          break;
+
+        case "store":
+          storeData();
+          break;
+
+        case "retrieve":
+          String value = retrieveData();
+          System.out.println(value);
           break;
 
         default:
@@ -298,7 +409,8 @@ public class Bucket{
   public String toString(){
     return "<Bucket object bucketId: " + bucketId + " ip: " + ip.getHostAddress() + " port: " + port +
       " nextId: " + (nextId == null ? "null" : nextId) + " nextIp: " + (nextIp == null ? "null" : nextIp.getHostAddress()) + " nextPort: " + nextPort +
-      " prevId: " + (prevId == null ? "null" : prevId) + " prevIp: " + (prevIp == null ? "null" : prevIp.getHostAddress()) + " prevPort: " + prevPort + ">";
+      " prevId: " + (prevId == null ? "null" : prevId) + " prevIp: " + (prevIp == null ? "null" : prevIp.getHostAddress()) + " prevPort: " + prevPort +
+      " data: " + data + ">";
   }
 
   public static void main(String[] args) throws Exception{
