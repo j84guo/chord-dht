@@ -6,8 +6,10 @@ todo :
 - insert transferred data on leave
 */
 
-import java.util.HashMap;
 import java.math.BigInteger;
+
+import java.util.HashMap;
+import java.util.Iterator;
 
 import java.net.Socket;
 import java.net.InetAddress;
@@ -36,13 +38,13 @@ public class RequestHandler extends Thread{
     try{
       handleRequest(in, out);
     }catch(Exception e){
-      System.out.println("Could not handle request... " + e.getMessage());
+      System.out.println("Could not handle request... " + e);
     }finally{
       try{
         out.close();
         in.close();
       }catch(Exception e){
-        System.out.println("Could not close socket and streams... " + e.getMessage());
+        System.out.println("Could not close socket and streams... " + e);
       }
     }
   }
@@ -68,13 +70,15 @@ public class RequestHandler extends Thread{
 
       resp.command = "JOIN_OK";
 
-      // send overlapping data to new node
-      for(String key : bucket.data.keySet()){
-        if(!keyInBetween(new BigInteger(key), bucket.prevId, bucket.bucketId)){
-          resp.body.put(key, bucket.data.get(key));
-          bucket.data.remove(key);
-        }
+      Iterator<String> it = bucket.data.keySet().iterator();
+      while(it.hasNext()){
+          String key = it.next();
+          if(!keyInBetween(new BigInteger(key), bucket.prevId, bucket.bucketId)){
+            resp.body.put(key, bucket.data.get(key));
+            it.remove();
+          }
       }
+
     }else{
       resp = forwardRequest(msg);
     }

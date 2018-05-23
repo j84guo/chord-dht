@@ -24,7 +24,7 @@ public class RequestListener extends Thread{
     try(ServerSocket server = new ServerSocket(port, 50, ip)){
       acceptForever(server);
     }catch(Exception e){
-      System.out.println("Could not start server... " + e.getMessage());
+      System.out.println("Could not start server... " + e);
     }
   }
 
@@ -38,7 +38,7 @@ public class RequestListener extends Thread{
         RequestHandler handler = new RequestHandler(client, in, out, bucket);
         handler.start();
       }catch(Exception e){
-        System.err.println("Could not start request handler... " + e.getMessage());
+        System.err.println("Could not start request handler... " + e);
       }
     }
   }

@@ -77,7 +77,7 @@ public class Bucket{
     try{
       host = InetAddress.getLocalHost();
     }catch(Exception e){
-      exitWithError("Could not get local host... " + e.getMessage());
+      exitWithError("Could not get local host... " + e);
     }
 
     return host;
@@ -90,7 +90,7 @@ public class Bucket{
       String text = ip.getHostAddress() + ":" + port;
       id = getSha256Hash(text);
     }catch(Exception e){
-      exitWithError("Could not compute bucket id... " + e.getMessage());
+      exitWithError("Could not compute bucket id... " + e);
     }
 
     return id;
@@ -131,7 +131,7 @@ public class Bucket{
 
       sendNewNode();
     }catch(Exception e){
-      exitWithError("Could not join network... " + e.getMessage());
+      exitWithError("Could not join network... " + e);
     }
   }
 
@@ -231,7 +231,7 @@ public class Bucket{
 
       sendNodeGone();
     }catch(Exception e){
-      exitWithError("Could not leave network... " + e.getMessage());
+      exitWithError("Could not leave network... " + e);
     }
   }
 
@@ -262,7 +262,7 @@ public class Bucket{
     try{
       key = getSha256Hash(name);
     }catch(Exception e){
-      System.err.println("Could not compute object hash... " + e.getMessage());
+      System.err.println("Could not compute object hash... " + e);
       return;
     }
 
@@ -282,7 +282,7 @@ public class Bucket{
       Message msg = buildStoreMessage(key, value);
       Message.writeMessage(out, msg);
     }catch(Exception e){
-      System.out.println("Could not store data... " + e.getMessage());
+      System.out.println("Could not store data... " + e);
     }
   }
 
@@ -304,7 +304,7 @@ public class Bucket{
     try{
       key = getSha256Hash(name);
     }catch(Exception e){
-      System.err.println("Could not retrieve object... " + e.getMessage());
+      System.err.println("Could not retrieve object... " + e);
       return "Error...";
     }
 
@@ -329,7 +329,7 @@ public class Bucket{
       return resp.body.get("DataValue");
 
     }catch(Exception e){
-      System.out.println("Could not store data... " + e.getMessage());
+      System.out.println("Could not store data... " + e);
     }
 
     return "Error";
