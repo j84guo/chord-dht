@@ -22,7 +22,7 @@ public class EchoSocket{
       ){
         String input;
         while((input = stdin.readLine()) != null){
-          out.println(input);
+          out.println(input /*+ "\nadditional line" The addition of this extra line introduces an offset, since the client and server are only supposed to read/write one line at a time*/);
           System.out.println("response: " + in.readLine());
         }
       }

@@ -41,6 +41,12 @@ public class RequestHandler extends Thread{
       System.out.println("Could not handle request... " + e);
     }finally{
       try{
+        // closing a buffered writer closes the underlying sreams
+        // when and output/input stream associated with a socket is closed, so is the socket
+        // closing the socket closes the associated output/input streams, if they are not already
+        // finally, the buffered reader is closed as well
+        // the output stream is closed first because certain output streams may throw an exception if closed twice
+        // as per comments in http://developer.classpath.org/doc/java/io/BufferedOutputStream-source.html
         out.close();
         in.close();
       }catch(Exception e){
