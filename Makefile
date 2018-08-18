@@ -2,12 +2,13 @@
 
 build: compile package
 
+# -cp is not needed since all classes are passed to the compiler
 compile:
 	mkdir -p build
-	javac chorddht/*.java -d build
+	javac src/main/java/chorddht/*.java -d build
 
 package:
-	jar -cvfm build/chorddht.jar MANIFEST.MF build/chorddht
+	jar -cvfm build/chorddht.jar src/main/resources/MANIFEST.MF build/chorddht
 
 clean:
 	rm -rf build
