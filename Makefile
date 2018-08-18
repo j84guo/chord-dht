@@ -8,7 +8,7 @@ compile:
 	javac src/main/java/chorddht/*.java -d build
 
 package:
-	jar -cvfm build/chorddht.jar src/main/resources/MANIFEST.MF build/chorddht
+	jar -cvfm build/chorddht.jar src/main/resources/META-INF/MANIFEST.MF build/chorddht
 
 clean:
 	rm -rf build
