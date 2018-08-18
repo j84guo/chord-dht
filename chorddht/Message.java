@@ -15,6 +15,8 @@ todo:
 - use constants for protocol keywords
 */
 
+package chorddht;
+
 import java.util.HashMap;
 
 import java.io.BufferedReader;

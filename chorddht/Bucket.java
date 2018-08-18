@@ -5,6 +5,8 @@ todo:
 - bug with re-joining
 */
 
+package chorddht;
+
 import java.math.BigInteger;
 import java.security.MessageDigest;
 
