@@ -1,3 +1,10 @@
+# java
 *.class
 *.jar
+
+# make
 build/
+
+# ide
+.idea/
+*.iml
