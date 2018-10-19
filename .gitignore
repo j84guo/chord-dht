@@ -1,3 +1,8 @@
+# gradle
+gradle/
+build/
+.gradle/
+
 # java
 *.class
 *.jar
@@ -8,3 +13,4 @@ build/
 # ide
 .idea/
 *.iml
+out/
